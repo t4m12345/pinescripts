@@ -1,0 +1,23 @@
+//nosd volume 
+//dk biên độ tăng
+increasingSpread = math.abs(close - open) > math.abs(close[1] - open[1])
+//dk vol giảm
+decreasingVolume = volume < volume[1]
+//dk nến sau đóng cửa hoàn toàn trên nến trước tăng
+candleFullyAbovePrevioustang = close > high[1]
+//dk nến sau đóng cửa hoàn toàn dưới nến trước giảm
+candleFullyAbovePreviousgiam = close < low[1]
+//dk nen tang
+bullishClosesAbovePrevious = close > close[1]
+//dk nen giam
+bearishClosesBelowPrevious = close < close[1]
+//dk map buy
+buyCondition = candleFullyAbovePrevioustang and increasingSpread and decreasingVolume
+//dk map sell
+sellCondition = candleFullyAbovePreviousgiam and increasingSpread and decreasingVolume
+//hien thi 
+plotshape(series=buyCondition, style=shape.triangleup, location=location.belowbar, color=color.green, size=size.small, title="Buy Signal")
+plotshape(series=sellCondition, style=shape.triangledown, location=location.abovebar, color=color.red, size=size.small, title="Sell Signal")
+//canhbao
+alertcondition(buyCondition, title="Buy Alert", message="Buy signal generated based on the condition.")
+alertcondition(sellCondition, title="Sell Alert", message="Sell signal generated based on the condition.")
