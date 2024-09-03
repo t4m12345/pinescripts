@@ -1,1 +1,342 @@
+// This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+//@version=5
+indicator('Gann Swing Chart V2', shorttitle='GSC2', overlay=true, max_lines_count=500)
 
+//-----Input-------
+customTF = input.timeframe(defval="",title = "Show Other TimeFrame")
+GroupGann = "Gann"
+showGann = input.bool(false, 'Show Gann/Color/Width', group = GroupGann, inline = "Gann1")
+colorGann = input.color(color.aqua, '', group = GroupGann,inline = "Gann1")
+widthGann = input.int(defval=1,title = "",minval=1,step=1, group = GroupGann,inline = "Gann1")
+GroupSGann = "Swing of Gann"
+showSGann = input.bool(true, 'Show Swing/Color/Width', group = GroupSGann,inline = "Swing1")
+colorSGann = input.color(color.aqua, '', group = GroupSGann,inline = "Swing1")
+widthSGann = input.int(defval=1,title = "",minval=1,step=1, group = GroupSGann,inline = "Swing1")
+showChoCh = input.bool(false, 'Show ChoCh', group = GroupSGann,inline = "Choch")
+show2ChoCh = input.bool(true, 'Show 2Choch/Color', group = GroupSGann,inline = "2Choch")
+color2Choch = input.color(color.aqua, '', group = GroupSGann,inline = "2Choch")
+showtargetOTL = input.bool(true, 'Show Target OTL',group = GroupSGann)
+showLabel = input.bool(true, 'Show Label TimeFrame',group = GroupSGann)
+
+//////////////////////////Global//////////////////////////
+var arrayLineTemp = array.new_line()
+// Funtion
+f_resInMinutes() => 
+    _resInMinutes = timeframe.multiplier * (
+      timeframe.isseconds ? 1. / 60. :
+      timeframe.isminutes ? 1.       :
+      timeframe.isdaily   ? 1440.    :
+      timeframe.isweekly  ? 10080.   :
+      timeframe.ismonthly ? 43800.   : na)
+// Converts a resolution expressed in minutes into a string usable by "security()"
+f_resFromMinutes(_minutes) =>
+      _minutes   < 1       ? str.tostring(math.round(_minutes*60)) + "S" :
+	  _minutes   < 60         ? str.tostring(math.round(_minutes)) + "m" :
+      _minutes   < 1440         ? str.tostring(math.round(_minutes/60)) + "H" :
+      _minutes   < 10080        ? str.tostring(math.round(math.min(_minutes / 1440, 7))) + "D" :
+	  _minutes   < 43800        ? str.tostring(math.round(math.min(_minutes / 10080, 4))) + "W" :
+      str.tostring(math.round(math.min(_minutes / 43800, 12))) + "M"
+f_tfRes(_res,_exp) =>
+    request.security(syminfo.tickerid,_res,_exp,lookahead=barmerge.lookahead_on)
+
+var arrayLineChoCh = array.new_line()
+var label labelTF = label.new(time, close, text = "",color = color.new(showSGann ? colorSGann : colorGann,95), textcolor = showSGann ? colorSGann : colorGann,xloc = xloc.bar_time, textalign = text.align_left)
+var line lineChoChOTLTarget = line.new(x1= time , y1=close,x2=time, y2= close,color = showSGann ? colorSGann : colorGann,xloc = xloc.bar_time,style = line.style_arrow_right)
+var line lineBosOTLTarget = line.new(x1= time , y1=close,x2=time, y2= close,color = showSGann ? colorSGann : colorGann,xloc = xloc.bar_time,style = line.style_arrow_right)
+//////////////////////////Gann//////////////////////////
+
+styleGann = showSGann ? line.style_dashed : line.style_solid
+var arrayXGann = array.new_int(5,time)
+var arrayYGann = array.new_float(5,close)
+var arrayLineGann = array.new_line()
+int drawLineGann = 0
+
+_high = high
+_low = low
+_close = close
+_open = open
+if(customTF != timeframe.period)
+    _high := f_tfRes(customTF,high)
+    _low := f_tfRes(customTF,low)
+	_close := f_tfRes(customTF,close)
+    _open := f_tfRes(customTF,open)
+
+highPrev = _high
+lowPrev = _low
+// drawLineGann => 2:Tiếp tục 1:Đảo chiều; // Outsidebar 2:Tiếp tục 3:Tiếp tục và Đảo chiều 4 : Đảo chiều 2 lần
+drawLineGann := 0
+if(_high[0] > highPrev[1] and _low[0] > lowPrev[1])
+	if(array.get(arrayYGann,0) > array.get(arrayYGann,1))
+		if(_high[0] <= high)
+			array.set(arrayXGann, 0, time)
+		array.set(arrayYGann, 0, _high[0])
+		drawLineGann := 2
+	else
+		array.unshift(arrayXGann,time)
+	    array.unshift(arrayYGann,_high[0])
+		drawLineGann := 1
+else if(_high[0] < highPrev[1] and _low[0] < lowPrev[1])
+	if(array.get(arrayYGann,0) > array.get(arrayYGann,1))
+		array.unshift(arrayXGann,time)
+	    array.unshift(arrayYGann,_low[0])
+		drawLineGann := 1
+	else
+		if(_low[0] >= low)
+			array.set(arrayXGann, 0, time)
+		array.set(arrayYGann, 0, _low[0])
+		drawLineGann := 2
+else if(_high[0] >= highPrev[1] and _low[0] < lowPrev[1] or _high[0] > highPrev[1] and _low[0] <= lowPrev[1])
+    if(array.get(arrayYGann,0) > array.get(arrayYGann,1))
+        if(_high[0] >= array.get(arrayYGann,0) and array.get(arrayYGann,1) < _low[0])
+			if(_high[0] <= high)
+				array.set(arrayXGann, 0, time)
+	        array.set(arrayYGann, 0, _high[0])
+	        drawLineGann := 2
+        else if(_high[0] >= array.get(arrayYGann,0) and array.get(arrayYGann,1) > _low[0])
+			if(_close < _open)
+				if(_high[0] <= high)
+					array.set(arrayXGann, 0, time)
+				array.set(arrayYGann, 0, _high[0])
+				array.unshift(arrayXGann,time)
+				array.unshift(arrayYGann,_low[0])
+				drawLineGann := 3
+			else
+				array.unshift(arrayXGann,time)
+				array.unshift(arrayYGann,_low[0])
+				array.unshift(arrayXGann,time)
+				array.unshift(arrayYGann,_high[0])
+				drawLineGann := 4
+	else if(array.get(arrayYGann,0) < array.get(arrayYGann,1))
+	    if(_low[0] <= array.get(arrayYGann,0) and _high[0] < array.get(arrayYGann,1))
+			if(_low[0] >= low)
+				array.set(arrayXGann, 0, time)
+			array.set(arrayYGann, 0, _low[0])
+			drawLineGann := 2
+        else if(_low[0] <= array.get(arrayYGann,0) and _high[0] > array.get(arrayYGann,1))
+		    if(_close > _open)
+				if(_low[0] >= low)
+					array.set(arrayXGann, 0, time)
+				array.set(arrayYGann, 0, _low[0])
+				array.unshift(arrayXGann,time)
+				array.unshift(arrayYGann,_high[0])
+				drawLineGann := 3
+			else
+				array.unshift(arrayXGann,time)
+				array.unshift(arrayYGann,_high[0])
+				array.unshift(arrayXGann,time)
+				array.unshift(arrayYGann,_low[0])
+				drawLineGann := 4
+else if((_high[0] <= highPrev[1] and _low[0] >= lowPrev[1]))
+	highPrev := highPrev[1]
+	lowPrev := lowPrev[1]
+if(f_resInMinutes() < f_tfRes(customTF,f_resInMinutes()) and drawLineGann == 0)
+    if(array.get(arrayYGann,0) > array.get(arrayYGann,1))
+        if(array.get(arrayYGann,0) <= high)
+			array.set(arrayXGann, 0, time)
+			drawLineGann := 2
+    else
+        if(array.get(arrayYGann,0) >= low)
+			array.set(arrayXGann, 0, time)
+			drawLineGann := 2
+if(showGann and f_resInMinutes() <= f_tfRes(customTF,f_resInMinutes()))
+    if(drawLineGann == 2)
+        if(array.size(arrayLineGann) >0)
+            line.set_xy2(array.get(arrayLineGann,0),array.get(arrayXGann,0),array.get(arrayYGann,0))
+		else
+        	array.unshift(arrayLineGann,line.new(array.get(arrayXGann,1),array.get(arrayYGann,1),array.get(arrayXGann,0),array.get(arrayYGann,0), color = colorGann,xloc = xloc.bar_time, style = styleGann,width = widthGann))
+    else if(drawLineGann == 1)
+        array.unshift(arrayLineGann,line.new(array.get(arrayXGann,1),array.get(arrayYGann,1),array.get(arrayXGann,0),array.get(arrayYGann,0), color = colorGann,xloc = xloc.bar_time, style = styleGann,width = widthGann))
+    else if(drawLineGann == 3)
+        if(array.size(arrayLineGann) >0)
+            line.set_xy2(array.get(arrayLineGann,0),array.get(arrayXGann,1),array.get(arrayYGann,1))
+		else
+        	array.unshift(arrayLineGann,line.new(array.get(arrayXGann,2),array.get(arrayYGann,2),array.get(arrayXGann,1),array.get(arrayYGann,1), color = colorGann,xloc = xloc.bar_time, style = styleGann,width = widthGann))
+        array.unshift(arrayLineGann,line.new(array.get(arrayXGann,1),array.get(arrayYGann,1),array.get(arrayXGann,0),array.get(arrayYGann,0), color = colorGann,xloc = xloc.bar_time, style = styleGann,width = widthGann))
+	else if(drawLineGann == 4)
+		array.unshift(arrayLineGann,line.new(array.get(arrayXGann,2),array.get(arrayYGann,2),array.get(arrayXGann,1),array.get(arrayYGann,1), color = colorGann,xloc = xloc.bar_time, style = styleGann,width = widthGann))
+        array.unshift(arrayLineGann,line.new(array.get(arrayXGann,1),array.get(arrayYGann,1),array.get(arrayXGann,0),array.get(arrayYGann,0), color = colorGann,xloc = xloc.bar_time, style = styleGann,width = widthGann))
+
+//////////////////////////Swing Gann//////////////////////////
+var arrayXSGann = array.new_int(5,time)
+var arrayYSGann = array.new_float(5,close)
+var arrayLineSGann = array.new_line()
+int drawLineSGann = 0
+int drawLineSGann1 = 0
+bool runCheckChoChSGann = false
+runCheckChoChSGann := runCheckChoChSGann[1]
+if(showSGann)
+	if(math.max(array.get(arrayYSGann,0),array.get(arrayYSGann,1)) < math.min(array.get(arrayYGann,0),array.get(arrayYGann,1)) or math.min(array.get(arrayYSGann,0),array.get(arrayYSGann,1)) > math.max(array.get(arrayYGann,0),array.get(arrayYGann,1)))
+		//Khởi tạo bắt đầu
+		drawLineSGann1 := 5
+		array.set(arrayXSGann, 0, array.get(arrayXGann,1))
+		array.set(arrayYSGann, 0, array.get(arrayYGann,1))
+		array.unshift(arrayXSGann,array.get(arrayXGann,0))
+		array.unshift(arrayYSGann,array.get(arrayYGann,0))
+	// drawLineSGann kiểm tra điểm 1 => 13:Tiếp tục có sóng hồi // 12|19(reDraw):Tiếp tục không có sóng hồi  // 14:Đảo chiều
+	if(array.get(arrayXGann,0) == array.get(arrayXGann,1))
+		if(array.get(arrayXSGann,0) >= array.get(arrayXGann,2) and array.get(arrayYSGann,0) != array.get(arrayYGann,1) and ((array.get(arrayYGann,1) > array.get(arrayYGann,2) and array.get(arrayYSGann,0) > array.get(arrayYSGann,1)) or (array.get(arrayYGann,1) < array.get(arrayYGann,2) and array.get(arrayYSGann,0) < array.get(arrayYSGann,1))))
+			drawLineSGann1 := 12
+			array.set(arrayXSGann, 0, array.get(arrayXGann,1))
+			array.set(arrayYSGann, 0, array.get(arrayYGann,1))
+		else if(array.get(arrayXSGann,0) <= array.get(arrayXGann,2))
+			if((array.get(arrayYSGann,0) > array.get(arrayYSGann,1) and array.get(arrayYGann,1) < array.get(arrayYSGann,1)) or (array.get(arrayYSGann,0) < array.get(arrayYSGann,1) and array.get(arrayYGann,1) > array.get(arrayYSGann,1)))
+				drawLineSGann1 := 14
+				runCheckChoChSGann := true
+				array.unshift(arrayXSGann,array.get(arrayXGann,1))
+				array.unshift(arrayYSGann,array.get(arrayYGann,1))
+			else if((array.get(arrayYSGann,0) > array.get(arrayYSGann,1) and array.get(arrayYGann,1) > array.get(arrayYSGann,0)) or (array.get(arrayYSGann,0) < array.get(arrayYSGann,1) and array.get(arrayYGann,1) < array.get(arrayYSGann,0)))
+				drawLineSGann1 := 13
+				_max = math.min(array.get(arrayYSGann,0),array.get(arrayYSGann,1))
+				_min = math.max(array.get(arrayYSGann,0),array.get(arrayYSGann,1))
+				_max_idx = 0
+				_min_idx = 0
+				for i = 2 to array.size(arrayXGann)
+					if(array.get(arrayXSGann,0) >= array.get(arrayXGann,i))
+						break
+					if(_min > array.get(arrayYGann,i))
+						_min := array.get(arrayYGann,i)
+						_min_idx := array.get(arrayXGann,i)
+					if(_max < array.get(arrayYGann,i))
+						_max := array.get(arrayYGann,i)
+						_max_idx := array.get(arrayXGann,i)
+				if(array.get(arrayYSGann,0) > array.get(arrayYSGann,1))
+					array.unshift(arrayXSGann,_min_idx)
+					array.unshift(arrayYSGann,_min)
+				else if(array.get(arrayYSGann,0) < array.get(arrayYSGann,1))
+					array.unshift(arrayXSGann,_max_idx)
+					array.unshift(arrayYSGann,_max)
+				array.unshift(arrayXSGann,array.get(arrayXGann,1))
+				array.unshift(arrayYSGann,array.get(arrayYGann,1))
+
+		if(f_resInMinutes() < f_tfRes(customTF,f_resInMinutes()))
+			if(array.get(arrayYSGann,0) == array.get(arrayYGann,1) and array.get(arrayXSGann,0) != array.get(arrayXGann,1))
+				array.set(arrayXSGann, 0, array.get(arrayXGann,1))
+				drawLineSGann1 := 19
+		if(f_resInMinutes() <= f_tfRes(customTF,f_resInMinutes()))
+			if(drawLineSGann1 == 12 or drawLineSGann1 == 19)
+				if(array.size(arrayLineSGann) >0)
+					line.set_xy2(array.get(arrayLineSGann,0),array.get(arrayXSGann,0),array.get(arrayYSGann,0))
+				else
+					array.unshift(arrayLineSGann,line.new(array.get(arrayXSGann,1),array.get(arrayYSGann,1),array.get(arrayXSGann,0),array.get(arrayYSGann,0), color = colorSGann,xloc = xloc.bar_time,width = widthSGann))
+			else if(drawLineSGann1 == 14)
+				array.unshift(arrayLineSGann,line.new(array.get(arrayXSGann,1),array.get(arrayYSGann,1),array.get(arrayXSGann,0),array.get(arrayYSGann,0), color = colorSGann,xloc = xloc.bar_time,width = widthSGann))
+			else if(drawLineSGann1 == 13)
+				array.unshift(arrayLineSGann,line.new(array.get(arrayXSGann,2),array.get(arrayYSGann,2),array.get(arrayXSGann,1),array.get(arrayYSGann,1), color = colorSGann,xloc = xloc.bar_time,width = widthSGann))
+				array.unshift(arrayLineSGann,line.new(array.get(arrayXSGann,1),array.get(arrayYSGann,1),array.get(arrayXSGann,0),array.get(arrayYSGann,0), color = colorSGann,xloc = xloc.bar_time,width = widthSGann))
+			else if(drawLineSGann1 == 15)
+				if(array.size(arrayLineSGann) >0)
+					line.set_xy2(array.get(arrayLineSGann,0),array.get(arrayXSGann,1),array.get(arrayYSGann,1))
+				else
+					array.unshift(arrayLineSGann,line.new(array.get(arrayXSGann,2),array.get(arrayYSGann,2),array.get(arrayXSGann,1),array.get(arrayYSGann,1), color = colorSGann,xloc = xloc.bar_time,width = widthSGann))
+				array.unshift(arrayLineSGann,line.new(array.get(arrayXSGann,1),array.get(arrayYSGann,1),array.get(arrayXSGann,0),array.get(arrayYSGann,0), color = colorSGann,xloc = xloc.bar_time,width = widthSGann))
+			if(runCheckChoChSGann)
+				runCheckChoChSGann := false
+				// ChoCh Trường hợp chữ N ngược, chữ N
+				if((array.get(arrayYSGann,3) > array.get(arrayYSGann,2) and array.get(arrayYSGann,3) < array.get(arrayYSGann,1) and array.get(arrayYSGann,0) < array.get(arrayYSGann,2)) or (array.get(arrayYSGann,3) < array.get(arrayYSGann,2) and array.get(arrayYSGann,3) > array.get(arrayYSGann,1) and array.get(arrayYSGann,0) > array.get(arrayYSGann,2)))
+					alert(syminfo.ticker + " : " + timeframe.period + " => Swing of Gann ChoCh" + (array.get(arrayYSGann,0) > array.get(arrayYSGann,1) ? "+ ⇑" : "- ⇓"))
+					if(showChoCh)
+						array.unshift(arrayLineChoCh,line.new(x1= array.get(arrayXSGann,2) , y1=array.get(arrayYSGann,2),x2=array.get(arrayXSGann,0), y2=array.get(arrayYSGann,2),color = colorSGann,xloc = xloc.bar_time,style = line.style_dotted))
+				// ChoCh 2 Đầu Trường hợp chữ N ngược, chữ N
+				if(show2ChoCh and ((array.get(arrayYSGann,1) > array.get(arrayYSGann,3) and array.get(arrayYSGann,3) > array.get(arrayYSGann,4) and array.get(arrayYSGann,4) > array.get(arrayYSGann,2) and array.get(arrayYSGann,2) > array.get(arrayYSGann,0)) or (array.get(arrayYSGann,0) > array.get(arrayYSGann,2) and array.get(arrayYSGann,2) > array.get(arrayYSGann,4) and array.get(arrayYSGann,4) > array.get(arrayYSGann,3) and array.get(arrayYSGann,3) > array.get(arrayYSGann,1))))
+					line.set_width(array.get(arrayLineSGann,1),widthSGann + 1)
+					line.set_style(array.get(arrayLineSGann,1),line.style_dashed)
+					line.set_color(array.get(arrayLineSGann,1),color2Choch)
+
+	// drawLineSGann kiểm tra điểm 0 => 3:Tiếp tục có sóng hồi // 2|9(reDraw):Tiếp tục không có sóng hồi  // 4:Đảo chiều
+	if(array.get(arrayXSGann,0) >= array.get(arrayXGann,1) and array.get(arrayYSGann,0) != array.get(arrayYGann,0) and ((array.get(arrayYGann,0) > array.get(arrayYGann,1) and array.get(arrayYSGann,0) > array.get(arrayYSGann,1)) or (array.get(arrayYGann,0) < array.get(arrayYGann,1) and array.get(arrayYSGann,0) < array.get(arrayYSGann,1))))
+		drawLineSGann := 2
+		array.set(arrayXSGann, 0, array.get(arrayXGann,0))
+		array.set(arrayYSGann, 0, array.get(arrayYGann,0))
+	else if(array.get(arrayXSGann,0) <= array.get(arrayXGann,1))
+		if((array.get(arrayYSGann,0) > array.get(arrayYSGann,1) and array.get(arrayYGann,0) < array.get(arrayYSGann,1)) or (array.get(arrayYSGann,0) < array.get(arrayYSGann,1) and array.get(arrayYGann,0) > array.get(arrayYSGann,1)))
+			drawLineSGann := 4
+			runCheckChoChSGann := true
+			array.unshift(arrayXSGann,array.get(arrayXGann,0))
+			array.unshift(arrayYSGann,array.get(arrayYGann,0))
+		else if((array.get(arrayYSGann,0) > array.get(arrayYSGann,1) and array.get(arrayYGann,0) > array.get(arrayYSGann,0)) or (array.get(arrayYSGann,0) < array.get(arrayYSGann,1) and array.get(arrayYGann,0) < array.get(arrayYSGann,0)))
+			drawLineSGann := 3
+			_max = math.min(array.get(arrayYSGann,0),array.get(arrayYSGann,1))
+			_min = math.max(array.get(arrayYSGann,0),array.get(arrayYSGann,1))
+			_max_idx = 0
+			_min_idx = 0
+			for i = 1 to array.size(arrayXGann)
+				if(array.get(arrayXSGann,0) >= array.get(arrayXGann,i))
+					break
+				if(_min > array.get(arrayYGann,i))
+					_min := array.get(arrayYGann,i)
+					_min_idx := array.get(arrayXGann,i)
+				if(_max < array.get(arrayYGann,i))
+					_max := array.get(arrayYGann,i)
+					_max_idx := array.get(arrayXGann,i)
+			if(array.get(arrayYSGann,0) > array.get(arrayYSGann,1))
+				array.unshift(arrayXSGann,_min_idx)
+				array.unshift(arrayYSGann,_min)
+			else if(array.get(arrayYSGann,0) < array.get(arrayYSGann,1))
+				array.unshift(arrayXSGann,_max_idx)
+				array.unshift(arrayYSGann,_max)
+			array.unshift(arrayXSGann,array.get(arrayXGann,0))
+			array.unshift(arrayYSGann,array.get(arrayYGann,0))
+
+	if(f_resInMinutes() < f_tfRes(customTF,f_resInMinutes()))
+		if(array.get(arrayYSGann,0) == array.get(arrayYGann,0) and array.get(arrayXSGann,0) != array.get(arrayXGann,0))
+			array.set(arrayXSGann, 0, array.get(arrayXGann,0))
+			drawLineSGann := 9
+	if(f_resInMinutes() <= f_tfRes(customTF,f_resInMinutes()))
+		if(drawLineSGann == 2 or drawLineSGann == 9)
+			if(array.size(arrayLineSGann) >0)
+				line.set_xy2(array.get(arrayLineSGann,0),array.get(arrayXSGann,0),array.get(arrayYSGann,0))
+			else
+				array.unshift(arrayLineSGann,line.new(array.get(arrayXSGann,1),array.get(arrayYSGann,1),array.get(arrayXSGann,0),array.get(arrayYSGann,0), color = colorSGann,xloc = xloc.bar_time,width = widthSGann))
+		else if(drawLineSGann == 4)
+			array.unshift(arrayLineSGann,line.new(array.get(arrayXSGann,1),array.get(arrayYSGann,1),array.get(arrayXSGann,0),array.get(arrayYSGann,0), color = colorSGann,xloc = xloc.bar_time,width = widthSGann))
+		else if(drawLineSGann == 3)
+			array.unshift(arrayLineSGann,line.new(array.get(arrayXSGann,2),array.get(arrayYSGann,2),array.get(arrayXSGann,1),array.get(arrayYSGann,1), color = colorSGann,xloc = xloc.bar_time,width = widthSGann))
+			array.unshift(arrayLineSGann,line.new(array.get(arrayXSGann,1),array.get(arrayYSGann,1),array.get(arrayXSGann,0),array.get(arrayYSGann,0), color = colorSGann,xloc = xloc.bar_time,width = widthSGann))
+		else if(drawLineSGann == 5)
+			if(array.size(arrayLineSGann) >0)
+				line.set_xy2(array.get(arrayLineSGann,0),array.get(arrayXSGann,1),array.get(arrayYSGann,1))
+			else
+				array.unshift(arrayLineSGann,line.new(array.get(arrayXSGann,2),array.get(arrayYSGann,2),array.get(arrayXSGann,1),array.get(arrayYSGann,1), color = colorSGann,xloc = xloc.bar_time,width = widthSGann))
+			array.unshift(arrayLineSGann,line.new(array.get(arrayXSGann,1),array.get(arrayYSGann,1),array.get(arrayXSGann,0),array.get(arrayYSGann,0), color = colorSGann,xloc = xloc.bar_time,width = widthSGann))
+		
+		if(runCheckChoChSGann)
+			runCheckChoChSGann := false
+			// ChoCh Trường hợp chữ N ngược, chữ N
+			if((array.get(arrayYSGann,3) > array.get(arrayYSGann,2) and array.get(arrayYSGann,3) < array.get(arrayYSGann,1) and array.get(arrayYSGann,0) < array.get(arrayYSGann,2)) or (array.get(arrayYSGann,3) < array.get(arrayYSGann,2) and array.get(arrayYSGann,3) > array.get(arrayYSGann,1) and array.get(arrayYSGann,0) > array.get(arrayYSGann,2)))
+				alert(syminfo.ticker + " : " + timeframe.period + " => Swing of Gann ChoCh" + (array.get(arrayYSGann,0) > array.get(arrayYSGann,1) ? "+ ⇑" : "- ⇓"))
+				if(showChoCh)
+					array.unshift(arrayLineChoCh,line.new(x1= array.get(arrayXSGann,2) , y1=array.get(arrayYSGann,2),x2=array.get(arrayXSGann,0), y2=array.get(arrayYSGann,2),color = colorSGann,xloc = xloc.bar_time,style = line.style_dotted))
+			// ChoCh 2 Đầu Trường hợp chữ N ngược, chữ N
+			if(show2ChoCh and ((array.get(arrayYSGann,1) > array.get(arrayYSGann,3) and array.get(arrayYSGann,3) > array.get(arrayYSGann,4) and array.get(arrayYSGann,4) > array.get(arrayYSGann,2) and array.get(arrayYSGann,2) > array.get(arrayYSGann,0)) or (array.get(arrayYSGann,0) > array.get(arrayYSGann,2) and array.get(arrayYSGann,2) > array.get(arrayYSGann,4) and array.get(arrayYSGann,4) > array.get(arrayYSGann,3) and array.get(arrayYSGann,3) > array.get(arrayYSGann,1))))
+				line.set_width(array.get(arrayLineSGann,1),widthSGann+1)
+				line.set_style(array.get(arrayLineSGann,1),line.style_dashed)
+				line.set_color(array.get(arrayLineSGann,1),color2Choch)
+
+///////////////////////Other//////////////////////////////////
+if(f_resInMinutes() <= f_tfRes(customTF,f_resInMinutes()))
+	if(showSGann)
+		if(showtargetOTL)
+			if(drawLineSGann1 == 14)
+				line.set_xy1(lineChoChOTLTarget,array.get(arrayXSGann,3),array.get(arrayYSGann,3))
+				line.set_xy2(lineChoChOTLTarget,array.get(arrayXSGann,3),array.get(arrayYSGann,3)*2 - array.get(arrayYSGann,2))
+			else if(drawLineSGann1 == 13)
+				line.set_xy1(lineBosOTLTarget,array.get(arrayXSGann,3),array.get(arrayYSGann,3))
+				line.set_xy2(lineBosOTLTarget,array.get(arrayXSGann,3),array.get(arrayYSGann,3)*2 - array.get(arrayYSGann,2))
+			if(drawLineSGann == 4)
+				line.set_xy1(lineChoChOTLTarget,array.get(arrayXSGann,2),array.get(arrayYSGann,2))
+				line.set_xy2(lineChoChOTLTarget,array.get(arrayXSGann,2),array.get(arrayYSGann,2)*2 - array.get(arrayYSGann,1))
+			else if(drawLineSGann == 3)
+				line.set_xy1(lineBosOTLTarget,array.get(arrayXSGann,2),array.get(arrayYSGann,2))
+				line.set_xy2(lineBosOTLTarget,array.get(arrayXSGann,2),array.get(arrayYSGann,2)*2 - array.get(arrayYSGann,1))
+	
+		if(showLabel and (barstate.islast or barstate.islastconfirmedhistory))
+			texLabel = f_resInMinutes() == f_tfRes(customTF,f_resInMinutes()) ? f_resFromMinutes(f_resInMinutes()) : f_resFromMinutes(f_tfRes(customTF,f_resInMinutes()))
+			label.set_xy(labelTF,array.get(arrayXSGann,0),array.get(arrayYSGann,0))
+			label.set_text(labelTF,texLabel)
+			label.set_style(labelTF,array.get(arrayYSGann,0) < array.get(arrayYSGann,1) ? label.style_label_upper_right : label.style_label_lower_right)
+	else if(showGann)
+		if(showLabel and (barstate.islast or barstate.islastconfirmedhistory))
+			texLabel = f_resInMinutes() == f_tfRes(customTF,f_resInMinutes()) ? f_resFromMinutes(f_resInMinutes()) : f_resFromMinutes(f_tfRes(customTF,f_resInMinutes()))
+			label.set_xy(labelTF,array.get(arrayXGann,0),array.get(arrayYGann,0))
+			label.set_text(labelTF,texLabel)
+			label.set_style(labelTF,array.get(arrayYGann,0) < array.get(arrayYGann,1) ? label.style_label_upper_right : label.style_label_lower_right)
