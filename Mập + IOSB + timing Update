@@ -1,0 +1,355 @@
+// This Pine Script™ code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © ManChau
+//@version=5
+indicator('Mập + IOSB + timing', shorttitle='Nến', overlay=true, max_lines_count=500)
+//-----Input-------
+
+EMA="EMA & SMA Setting"
+srccc = input(close, title="Source",group = EMA)
+// Thêm các input để cấu hình EMA
+showEMAso1 = input(true, title="Hiển thị EMA Số 1 1️⃣",group = EMA)
+emaLength1 = input.int(20, title="Chiều dài EMA số 1", minval=1,group = EMA)
+line1 = input.int(1, options = [1,2,3], title="Độ rộng EMA Số 1",group = EMA)
+// Tính toán giá trị EMA
+emaValue1 = ta.ema(srccc, emaLength1)
+// Vẽ EMA trên biểu đồ nếu tùy chọn bật
+plot(showEMAso1 ? emaValue1 : na, title="EMA Số 1", color=color.blue, linewidth=line1)
+
+// Thêm các input để cấu hình EMA
+showEMAso2 = input(true, title="Hiển thị EMA Số 2 2️⃣",group = EMA)
+emaLength2 = input.int(100, title="Chiều dài EMA số 2", minval=1,group = EMA)
+line2 = input.int(1, options = [1,2,3], title="Độ rộng EMA Số 2",group = EMA)
+// Tính toán giá trị EMA
+emaValue2 = ta.ema(srccc, emaLength2)
+// Vẽ EMA trên biểu đồ nếu tùy chọn bật
+plot(showEMAso2 ? emaValue2 : na, title="EMA Số 2", color=color.red, linewidth=line2)
+
+// Thêm các input để cấu hình EMA
+showEMAso3 = input(false, title="Hiển thị EMA Số 3 3️⃣",group = EMA)
+emaLength3 = input.int(200, title="Chiều dài EMA số 3", minval=1,group = EMA)
+line3 = input.int(1, options = [1,2,3], title="Độ rộng EMA Số 3",group = EMA)
+// Tính toán giá trị EMA
+emaValue3 = ta.ema(srccc, emaLength3)
+// Vẽ EMA trên biểu đồ nếu tùy chọn bật
+plot(showEMAso3 ? emaValue3 : na, title="EMA Số 3", color=color.orange, linewidth=line3)
+
+//////////////////////// Thêm các input để cấu hình SMA
+showSMAso11 = input(false, title="Hiển thị SMA số 1️⃣ ",group = EMA)
+smaLength11 = input.int(50, title="Chiều dài SMA số 1", minval=1,group = EMA)
+line11 = input.int(1, options = [1,2,3], title="Độ rộng SMA Số 1",group = EMA)
+// Tính toán giá trị SMA
+smaValue11 = ta.sma(srccc, smaLength11)
+// Vẽ SMA trên biểu đồ nếu tùy chọn bật
+plot(showSMAso11 ? smaValue11 : na, title="SMA Số 1", color=color.red, linewidth=line11)
+
+//////////////////////// Thêm các input để cấu hình SMA
+showSMAso22 = input(false, title="Hiển thị SMA Số 2 2️⃣ ",group = EMA)
+smaLength22 = input.int(100, title="Chiều dài SMA số 2", minval=1,group = EMA)
+line22 = input.int(1, options = [1,2,3], title="Độ rộng SMA Số 22",group = EMA)
+// Tính toán giá trị SMA
+smaValue22 = ta.sma(srccc, smaLength22)
+// Vẽ SMA trên biểu đồ nếu tùy chọn bật
+plot(showSMAso22 ? smaValue22 : na, title="SMA Số 2", color=color.purple, linewidth=line22)
+
+//////////////////////////////////////////////
+IOSB = "TLPInOutSideBarSetting"
+sib = input(false,group =IOSB, title="Show Inside Bars")
+sob = input(true,group =IOSB, title="Show Outside Bars")
+ZoneColor = input(defval = color.new(color.orange, 80),group =IOSB, title = "Background Color")
+BorderColor = input(defval = color.new(color.orange, 80),group =IOSB, title = "Border Color")
+
+var aCZ = array.new_float(0)
+
+float highest = high[1]
+float lowest = low[1]
+
+if (array.size(aCZ) > 0)
+    highest := array.get(aCZ, 0)
+    lowest := array.get(aCZ, 1)
+
+
+insideBarCondtion = low >= lowest and low <= highest and high >= lowest and high <= highest      
+
+if ( insideBarCondtion == true )
+    array.push(aCZ, high[1])
+    array.push(aCZ, low[1])
+
+if( array.size(aCZ) >= 2 and insideBarCondtion == false )
+    float maxCZ = array.max(aCZ)
+    float minCZ = array.min(aCZ)
+    box.new(bar_index - (array.size(aCZ) / 2) - 1, maxCZ, bar_index - 1, minCZ, bgcolor = ZoneColor, border_color = BorderColor)
+    array.clear(aCZ)
+//Inside Bars
+insideBar() => sib and high <= high[1] and low >= low[1] ? 1 : 0
+outsideBar() => sob and (high > high[1] and low < low[1]) ? 1 : 0
+
+insideBar1 = input.color(color.yellow, '',inline = "insideBar1",title = "Inside Bar")
+outsideBar2 = input.color(color.blue, '',inline = "outsideBar2",title = "Out side bar")
+//Inside and Outside Bars
+barcolor(insideBar() ? insideBar1 : na )
+barcolor(outsideBar() ? outsideBar2 : na )
+
+
+
+//nosd volume 
+//dk biên độ tăng
+increasingSpread = math.abs(close - open) > math.abs(close[1] - open[1])
+//dk vol giảm
+decreasingVolume = volume < volume[1]
+//dk nến sau đóng cửa hoàn toàn trên nến trước tăng
+candleFullyAbovePrevioustang = close > high[1]
+//dk nến sau đóng cửa hoàn toàn dưới nến trước giảm
+candleFullyAbovePreviousgiam = close < low[1]
+//dk nen tang
+bullishClosesAbovePrevious = close > close[1]
+//dk nen giam
+bearishClosesBelowPrevious = close < close[1]
+//dk map buy
+buyCondition = candleFullyAbovePrevioustang and increasingSpread and decreasingVolume
+//dk map sell
+sellCondition = candleFullyAbovePreviousgiam and increasingSpread and decreasingVolume
+//hien thi 
+plotshape(series=buyCondition, style=shape.triangleup, location=location.belowbar, color=color.green, size=size.small, title="Buy Signal")
+plotshape(series=sellCondition, style=shape.triangledown, location=location.abovebar, color=color.red, size=size.small, title="Sell Signal")
+//canhbao
+alertcondition(buyCondition, title="Buy Alert", message="Buy signal generated based on the condition.")
+alertcondition(sellCondition, title="Sell Alert", message="Sell signal generated based on the condition.")
+
+
+//timing
+//-----Input-------
+timezone = input.string(defval = "GMT+7", title = "Time zone",options = ["GMT+1","GMT+2","GMT+3","GMT+4","GMT+5","GMT+6","GMT+7","GMT+8","GMT+9","GMT+10","GMT+11","GMT+12","GMT-11","GMT-10","GMT-9","GMT-8","GMT-7","GMT-6","GMT-5","GMT-4","GMT-3","GMT-2","GMT-1"])
+widthLine = input.int(defval=1,title = "Line Width/Style",minval=1,step=1,inline = "Line")
+linestyle = input.string(title="",options=['(─)', '(╌)', '(┈)'],defval='(┈)', inline = "Line")
+lineStyle = linestyle == "(┈)" ? line.style_dotted : linestyle == "(╌)" ? line.style_dashed : line.style_solid
+alertFirts = input.int(defval=5,title = "Cảnh báo trước(Minute)",minval=0,step=1)
+showLabel = input.bool(true, 'Show Label /',inline = "Label")
+labelsize = input.string('normal','Label Size', options=['tiny', 'small', 'normal', 'large', 'huge', 'auto'],inline = "Label")
+colortext = input.color(color.rgb(255, 6, 6), title='Color', inline="Label")
+
+
+showTime1 = input.bool(true, 'HH:MM/Color',inline = "Time1")
+hourTime1 = input.int(defval=06,title = "",minval=0,step=1,maxval = 24,inline = "Time1")
+minuteTime1 = input.int(defval=00,title = ":",minval=0,step=1,maxval = 59,inline = "Time1")
+colorLineTime1 = input.color(color.aqua, '', inline = "Time1")
+labelTime1 = input.string(defval = "IB TK" ,title="Text")
+showTime2 = input.bool(true, 'HH:MM/Color',inline = "Time2")
+hourTime2 = input.int(defval=06,title = "",minval=0,step=1,maxval = 24,inline = "Time2")
+minuteTime2 = input.int(defval=30,title = ":",minval=0,step=1,maxval = 59,inline = "Time2")
+colorLineTime2 = input.color(color.rgb(0, 127, 212), '', inline = "Time2")
+labelTime2 = input.string(defval = "30m" ,title="Text")
+showTime3 = input.bool(true, 'HH:MM/Color',inline = "Time3")
+hourTime3 = input.int(defval=07,title = "",minval=0,step=1,maxval = 24,inline = "Time3")
+minuteTime3 = input.int(defval=00,title = ":",minval=0,step=1,maxval = 59,inline = "Time3")
+colorLineTime3 = input.color(color.aqua, '', inline = "Time3")
+labelTime3 = input.string(defval = "IB TK" ,title="Text")
+showTime4 = input.bool(true, 'HH:MM/Color',inline = "Time4")
+hourTime4 = input.int(defval=08,title = "",minval=0,step=1,maxval = 24,inline = "Time4")
+minuteTime4 = input.int(defval=00,title = ":",minval=0,step=1,maxval = 59,inline = "Time4")
+colorLineTime4 = input.color(color.green, '', inline = "Time4")
+labelTime4 = input.string(defval = "Tokyo Open" ,title="Text")
+showTime5 = input.bool(true, 'HH:MM/Color',inline = "Time5")
+hourTime5 = input.int(defval=08,title = "",minval=0,step=1,maxval = 24,inline = "Time5")
+minuteTime5 = input.int(defval=30,title = ":",minval=0,step=1,maxval = 59,inline = "Time5")
+colorLineTime5 = input.color(color.aqua, '', inline = "Time5")
+labelTime5 = input.string(defval = "Mid Tokyo" ,title="Text")
+showTime6 = input.bool(true, 'HH:MM/Color',inline = "Time6")
+hourTime6 = input.int(defval=10,title = "",minval=0,step=1,maxval = 24,inline = "Time6")
+minuteTime6 = input.int(defval=00,title = ":",minval=0,step=1,maxval = 59,inline = "Time6")
+colorLineTime6 = input.color(color.red, '', inline = "Time6")
+labelTime6 = input.string(defval = "Tokyo Lunch" ,title="Text")
+showTime7 = input.bool(true, 'HH:MM/Color',inline = "Time7")
+hourTime7 = input.int(defval=11,title = "",minval=0,step=1,maxval = 24,inline = "Time7")
+minuteTime7 = input.int(defval=30,title = ":",minval=0,step=1,maxval = 59,inline = "Time7")
+colorLineTime7 = input.color(color.aqua, '', inline = "Time7")
+labelTime7 = input.string(defval = "Tokyo Re" ,title="Text")
+showTime8 = input.bool(true, 'HH:MM/Color',inline = "Time8")
+hourTime8 = input.int(defval=14,title = "",minval=0,step=1,maxval = 24,inline = "Time8")
+minuteTime8 = input.int(defval=00,title = ":",minval=0,step=1,maxval = 59,inline = "Time8")
+colorLineTime8 = input.color(color.red, '', inline = "Time8")
+labelTime8 = input.string(defval = "Tokyo Close" ,title="Text")
+showTime9 = input.bool(true, 'HH:MM/Color',inline = "Time9")
+hourTime9 = input.int(defval=14,title = "",minval=0,step=1,maxval = 24,inline = "Time9")
+minuteTime9 = input.int(defval=30,title = ":",minval=0,step=1,maxval = 59,inline = "Time9")
+colorLineTime9 = input.color(color.aqua, '', inline = "Time9")
+labelTime9 = input.string(defval = "UkOpen" ,title="Text")
+showTime10 = input.bool(true, 'HH:MM/Color',inline = "Time10")
+hourTime10 = input.int(defval=15,title = "",minval=0,step=1,maxval = 24,inline = "Time10")
+minuteTime10 = input.int(defval=00,title = ":",minval=0,step=1,maxval = 59,inline = "Time10")
+colorLineTime10 = input.color(color.green, '', inline = "Time10")
+labelTime10 = input.string(defval = "London Open" ,title="Text")
+showTime11 = input.bool(true, 'HH:MM/Color',inline = "Time11")
+hourTime11 = input.int(defval=15,title = "",minval=0,step=1,maxval = 24,inline = "Time11")
+minuteTime11 = input.int(defval=30,title = ":",minval=0,step=1,maxval = 59,inline = "Time11")
+colorLineTime11 = input.color(color.aqua, '', inline = "Time11")
+labelTime11 = input.string(defval = "30m LD" ,title="Text")
+showTime12 = input.bool(true, 'HH:MM/Color',inline = "Time12")
+hourTime12 = input.int(defval=16,title = "",minval=0,step=1,maxval = 24,inline = "Time12")
+minuteTime12 = input.int(defval=00,title = ":",minval=0,step=1,maxval = 59,inline = "Time12")
+colorLineTime12 = input.color(color.aqua, '', inline = "Time12")
+labelTime12 = input.string(defval = "IB LonDon" ,title="Text")
+showTime13 = input.bool(true, 'HH:MM/Color',inline = "Time13")
+hourTime13= input.int(defval=19,title = "",minval=0,step=1,maxval = 24,inline = "Time13")
+minuteTime13 = input.int(defval=00,title = ":",minval=0,step=1,maxval = 59,inline = "Time13")
+colorLineTime13 = input.color(color.red, '', inline = "Time13")
+labelTime13 = input.string(defval = "London Lunch" ,title="Text")
+showTime14 = input.bool(true, 'HH:MM/Color',inline = "Time14")
+hourTime14= input.int(defval=20,title = "",minval=0,step=1,maxval = 24,inline = "Time14")
+minuteTime14 = input.int(defval=00,title = ":",minval=0,step=1,maxval = 59,inline = "Time14")
+colorLineTime14 = input.color(color.green, '', inline = "Time14")
+labelTime14 = input.string(defval = "NY Open" ,title="Text")
+showTime15 = input.bool(true, 'HH:MM/Color',inline = "Time15")
+hourTime15= input.int(defval=20,title = "",minval=0,step=1,maxval = 24,inline = "Time15")
+minuteTime15 = input.int(defval=30,title = ":",minval=0,step=1,maxval = 59,inline = "Time15")
+colorLineTime15 = input.color(color.aqua, '', inline = "Time15")
+labelTime15 = input.string(defval = "30m NY" ,title="Text")
+showTime16 = input.bool(true, 'HH:MM/Color',inline = "Time16")
+hourTime16= input.int(defval=23,title = "",minval=0,step=1,maxval = 24,inline = "Time16")
+minuteTime16 = input.int(defval=00,title = ":",minval=0,step=1,maxval = 59,inline = "Time16")
+colorLineTime16 = input.color(color.red, '', inline = "Time16")
+labelTime16 = input.string(defval = "London Close" ,title="Text")
+showTime17 = input.bool(true, 'HH:MM/Color',inline = "Time17")
+hourTime17= input.int(defval=00,title = "",minval=0,step=1,maxval = 24,inline = "Time17")
+minuteTime17 = input.int(defval=00,title = ":",minval=0,step=1,maxval = 59,inline = "Time17")
+colorLineTime17 = input.color(color.red, '', inline = "Time17")
+labelTime17 = input.string(defval = "NY Lunch" ,title="Text")
+showTime18 = input.bool(true, 'HH:MM/Color',inline = "Time18")
+hourTime18= input.int(defval=01,title = "",minval=0,step=1,maxval = 24,inline = "Time18")
+minuteTime18 = input.int(defval=30,title = ":",minval=0,step=1,maxval = 59,inline = "Time18")
+colorLineTime18 = input.color(color.aqua, '', inline = "Time18")
+labelTime18 = input.string(defval = "NY Re" ,title="Text")
+//////////////////////////Global//////////////////////////
+timeinrange(res, sess) =>
+    time(res, sess,timezone) != 0
+_resInMinutes = timeframe.multiplier * (
+  timeframe.isseconds ? 1. / 60. :
+  timeframe.isminutes ? 1.       :
+  timeframe.isdaily   ? 1440.    :
+  timeframe.isweekly  ? 10080.   :
+  timeframe.ismonthly ? 43800.   : na)
+var arrayLine = array.new_line()
+var arrayLabel = array.new_label()
+int tempTime = 0
+////////////////////////////////////////////////////
+if(_resInMinutes < 1440 and barstate.isconfirmed)
+    timeDay = timestamp(timezone,year(time,timezone),month(time,timezone),dayofmonth(time,timezone))
+    if(showTime1)
+        tempTime := timeDay + (hourTime1*3600 + minuteTime1*60)*1000
+        if(time <= tempTime and time_close >= tempTime)
+            array.push(arrayLine,line.new(tempTime,0,tempTime,high,xloc.bar_time,extend.right,colorLineTime1,lineStyle,widthLine))
+            if(showLabel)
+                array.push(arrayLabel,label.new(x = tempTime,y = 0,xloc = xloc.bar_time, yloc = yloc.price,text = labelTime1,color = color.black,textcolor = colortext,style = label.style_none,size = labelsize))
+
+
+    if(showTime2)
+        tempTime := timeDay + (hourTime2*3600 + minuteTime2*60)*1000
+        if(time <= tempTime and time_close >= tempTime)
+            array.push(arrayLine,line.new(tempTime + 7*86400*1000 ,0,tempTime + 7*86400*1000 ,high,xloc.bar_time,extend.right,colorLineTime2,lineStyle,widthLine))
+            if(showLabel)
+                array.push(arrayLabel,label.new(x = tempTime + 7*86400*1000,y = 0,xloc = xloc.bar_time, yloc = yloc.price,text = labelTime2,color = color.black,textcolor = colortext,style = label.style_none,size = labelsize))
+    if(showTime3)
+        tempTime := timeDay + (hourTime3*3600 + minuteTime3*60)*1000
+        if(time <= tempTime and time_close >= tempTime)
+            array.push(arrayLine,line.new(tempTime + 7*86400*1000 ,0,tempTime + 7*86400*1000 ,high,xloc.bar_time,extend.right,colorLineTime3,lineStyle,widthLine))
+            if(showLabel)
+                array.push(arrayLabel,label.new(x = tempTime + 7*86400*1000,y = 0,xloc = xloc.bar_time, yloc = yloc.price,text = labelTime3,color = color.black,textcolor = colortext,style = label.style_none,size = labelsize))
+    if(showTime4)
+        tempTime := timeDay + (hourTime4*3600 + minuteTime4*60)*1000
+        if(time <= tempTime and time_close >= tempTime)
+            array.push(arrayLine,line.new(tempTime + 7*86400*1000 ,0,tempTime + 7*86400*1000 ,high,xloc.bar_time,extend.right,colorLineTime4,lineStyle,widthLine))
+            if(showLabel)
+                array.push(arrayLabel,label.new(x = tempTime + 7*86400*1000,y = 0,xloc = xloc.bar_time, yloc = yloc.price,text = labelTime4,color = color.black,textcolor = colortext,style = label.style_none,size = labelsize))
+    if(showTime5)
+        tempTime := timeDay + (hourTime5*3600 + minuteTime5*60)*1000
+        if(time <= tempTime and time_close >= tempTime)
+            array.push(arrayLine,line.new(tempTime + 7*86400*1000 ,0,tempTime + 7*86400*1000 ,high,xloc.bar_time,extend.right,colorLineTime5,lineStyle,widthLine))
+            if(showLabel)
+                array.push(arrayLabel,label.new(x = tempTime + 7*86400*1000,y = 0,xloc = xloc.bar_time, yloc = yloc.price,text = labelTime5,color = color.black,textcolor = colortext,style = label.style_none,size = labelsize))
+    if(showTime6)
+        tempTime := timeDay + (hourTime6*3600 + minuteTime6*60)*1000
+        if(time <= tempTime and time_close >= tempTime)
+            array.push(arrayLine,line.new(tempTime + 7*86400*1000 ,0,tempTime + 7*86400*1000 ,high,xloc.bar_time,extend.right,colorLineTime6,lineStyle,widthLine))
+            if(showLabel)
+                array.push(arrayLabel,label.new(x = tempTime + 7*86400*1000,y = 0,xloc = xloc.bar_time, yloc = yloc.price,text = labelTime6,color = color.black,textcolor = colortext,style = label.style_none,size = labelsize))
+    if(showTime7)
+        tempTime := timeDay + (hourTime7*3600 + minuteTime7*60)*1000
+        if(time <= tempTime and time_close >= tempTime)
+            array.push(arrayLine,line.new(tempTime + 7*86400*1000 ,0,tempTime + 7*86400*1000 ,high,xloc.bar_time,extend.right,colorLineTime7,lineStyle,widthLine))
+            if(showLabel)
+                array.push(arrayLabel,label.new(x = tempTime + 7*86400*1000,y = 0,xloc = xloc.bar_time, yloc = yloc.price,text = labelTime7,color = color.black,textcolor = colortext,style = label.style_none,size = labelsize))
+    if(showTime8)
+        tempTime := timeDay + (hourTime8*3600 + minuteTime8*60)*1000
+        if(time <= tempTime and time_close >= tempTime)
+            array.push(arrayLine,line.new(tempTime + 7*86400*1000 ,0,tempTime + 7*86400*1000 ,high,xloc.bar_time,extend.right,colorLineTime8,lineStyle,widthLine))
+            if(showLabel)
+                array.push(arrayLabel,label.new(x = tempTime + 7*86400*1000,y = 0,xloc = xloc.bar_time, yloc = yloc.price,text = labelTime8,color = color.black,textcolor = colortext,style = label.style_none,size = labelsize))
+    if(showTime9)
+        tempTime := timeDay + (hourTime9*3600 + minuteTime9*60)*1000
+        if(time <= tempTime and time_close >= tempTime)
+            array.push(arrayLine,line.new(tempTime + 7*86400*1000 ,0,tempTime + 7*86400*1000 ,high,xloc.bar_time,extend.right,colorLineTime9,lineStyle,widthLine))
+            if(showLabel)
+                array.push(arrayLabel,label.new(x = tempTime + 7*86400*1000,y = 0,xloc = xloc.bar_time, yloc = yloc.price,text = labelTime9,color = color.black,textcolor = colortext,style = label.style_none,size = labelsize))
+    if(showTime10)
+        tempTime := timeDay + (hourTime10*3600 + minuteTime10*60)*1000
+        if(time <= tempTime and time_close >= tempTime)
+            array.push(arrayLine,line.new(tempTime + 7*86400*1000 ,0,tempTime + 7*86400*1000 ,high,xloc.bar_time,extend.right,colorLineTime10,lineStyle,widthLine))
+            if(showLabel)
+                array.push(arrayLabel,label.new(x = tempTime + 7*86400*1000,y = 0,xloc = xloc.bar_time, yloc = yloc.price,text = labelTime10,color = color.black,textcolor = colortext,style = label.style_none,size = labelsize))
+    if(showTime11)
+        tempTime := timeDay + (hourTime11*3600 + minuteTime11*60)*1000
+        if(time <= tempTime and time_close >= tempTime)
+            array.push(arrayLine,line.new(tempTime + 7*86400*1000 ,0,tempTime + 7*86400*1000 ,high,xloc.bar_time,extend.right,colorLineTime11,lineStyle,widthLine))
+            if(showLabel)
+                array.push(arrayLabel,label.new(x = tempTime + 7*86400*1000,y = 0,xloc = xloc.bar_time, yloc = yloc.price,text = labelTime11,color = color.black,textcolor = colortext,style = label.style_none,size = labelsize))
+    if(showTime12)
+        tempTime := timeDay + (hourTime12*3600 + minuteTime12*60)*1000
+        if(time <= tempTime and time_close >= tempTime)
+            array.push(arrayLine,line.new(tempTime + 7*86400*1000 ,0,tempTime + 7*86400*1000 ,high,xloc.bar_time,extend.right,colorLineTime12,lineStyle,widthLine))
+            if(showLabel)
+                array.push(arrayLabel,label.new(x = tempTime + 7*86400*1000,y = 0,xloc = xloc.bar_time, yloc = yloc.price,text = labelTime12,color = color.black,textcolor = colortext,style = label.style_none,size = labelsize))
+    if(showTime13)
+        tempTime := timeDay + (hourTime13*3600 + minuteTime13*60)*1000
+        if(time <= tempTime and time_close >= tempTime)
+            array.push(arrayLine,line.new(tempTime + 7*86400*1000 ,0,tempTime + 7*86400*1000 ,high,xloc.bar_time,extend.right,colorLineTime13,lineStyle,widthLine))
+            if(showLabel)
+                array.push(arrayLabel,label.new(x = tempTime + 7*86400*1000,y = 0,xloc = xloc.bar_time, yloc = yloc.price,text = labelTime13,color = color.black,textcolor = colortext,style = label.style_none,size = labelsize))
+    if(showTime14)
+        tempTime := timeDay + (hourTime14*3600 + minuteTime14*60)*1000
+        if(time <= tempTime and time_close >= tempTime)
+            array.push(arrayLine,line.new(tempTime + 7*86400*1000 ,0,tempTime + 7*86400*1000 ,high,xloc.bar_time,extend.right,colorLineTime14,lineStyle,widthLine))
+            if(showLabel)
+                array.push(arrayLabel,label.new(x = tempTime + 7*86400*1000,y = 0,xloc = xloc.bar_time, yloc = yloc.price,text = labelTime14,color = color.black,textcolor = colortext,style = label.style_none,size = labelsize))
+    if(showTime15)
+        tempTime := timeDay + (hourTime15*3600 + minuteTime15*60)*1000
+        if(time <= tempTime and time_close >= tempTime)
+            array.push(arrayLine,line.new(tempTime + 7*86400*1000 ,0,tempTime + 7*86400*1000 ,high,xloc.bar_time,extend.right,colorLineTime15,lineStyle,widthLine))
+            if(showLabel)
+                array.push(arrayLabel,label.new(x = tempTime + 7*86400*1000,y = 0,xloc = xloc.bar_time, yloc = yloc.price,text = labelTime15,color = color.black,textcolor = colortext,style = label.style_none,size = labelsize))
+    if(showTime16)
+        tempTime := timeDay + (hourTime16*3600 + minuteTime16*60)*1000
+        if(time <= tempTime and time_close >= tempTime)
+            array.push(arrayLine,line.new(tempTime + 7*86400*1000 ,0,tempTime + 7*86400*1000 ,high,xloc.bar_time,extend.right,colorLineTime16,lineStyle,widthLine))
+            if(showLabel)
+                array.push(arrayLabel,label.new(x = tempTime + 7*86400*1000,y = 0,xloc = xloc.bar_time, yloc = yloc.price,text = labelTime16,color = color.black,textcolor = colortext,style = label.style_none,size = labelsize))  
+    if(showTime17)
+        tempTime := timeDay + (hourTime17*3600 + minuteTime17*60)*1000
+        if(time <= tempTime and time_close >= tempTime)
+            array.push(arrayLine,line.new(tempTime + 7*86400*1000 ,0,tempTime + 7*86400*1000 ,high,xloc.bar_time,extend.right,colorLineTime17,lineStyle,widthLine))
+            if(showLabel)
+                array.push(arrayLabel,label.new(x = tempTime + 7*86400*1000,y = 0,xloc = xloc.bar_time, yloc = yloc.price,text = labelTime17,color = color.black,textcolor = colortext,style = label.style_none,size = labelsize))  
+    if(showTime18)
+        tempTime := timeDay + (hourTime18*3600 + minuteTime18*60)*1000
+        if(time <= tempTime and time_close >= tempTime)
+            array.push(arrayLine,line.new(tempTime + 7*86400*1000 ,0,tempTime + 7*86400*1000 ,high,xloc.bar_time,extend.right,colorLineTime18,lineStyle,widthLine))
+            if(showLabel)
+                array.push(arrayLabel,label.new(x = tempTime + 7*86400*1000,y = 0,xloc = xloc.bar_time, yloc = yloc.price,text = labelTime18,color = color.black,textcolor = colortext,style = label.style_none,size = labelsize))                                                                          
+
+
+if(array.size(arrayLine)>0)
+    for tempLine in array.copy(arrayLine)
+        if(line.get_x1(array.get(arrayLine,array.indexof(arrayLine,tempLine))) - alertFirts*60*1000<=timenow)
+            alert("Alert Time: " + str.tostring(hour(time,timezone)) + ":" + str.tostring(minute(time,timezone)), alert.freq_once_per_bar )
+            array.remove(arrayLine,array.indexof(arrayLine,tempLine))
+
+
+
