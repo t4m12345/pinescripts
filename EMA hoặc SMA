@@ -1,0 +1,52 @@
+// This Pine Script™ code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © ManChau
+//@version=5
+indicator('EMA và SMA', shorttitle='Nến', overlay=true, max_lines_count=500)
+//-----Input-------
+
+EMA="EMA & SMA Setting"
+srccc = input(close, title="Source",group = EMA)
+// Thêm các input để cấu hình EMA
+showEMAso1 = input(true, title="Hiển thị EMA Số 1 1️⃣",group = EMA)
+emaLength1 = input.int(20, title="Chiều dài EMA số 1", minval=1,group = EMA)
+line1 = input.int(1, options = [1,2,3], title="Độ rộng EMA Số 1",group = EMA)
+// Tính toán giá trị EMA
+emaValue1 = ta.ema(srccc, emaLength1)
+// Vẽ EMA trên biểu đồ nếu tùy chọn bật
+plot(showEMAso1 ? emaValue1 : na, title="EMA Số 1", color=color.blue, linewidth=line1)
+
+// Thêm các input để cấu hình EMA
+showEMAso2 = input(true, title="Hiển thị EMA Số 2 2️⃣",group = EMA)
+emaLength2 = input.int(100, title="Chiều dài EMA số 2", minval=1,group = EMA)
+line2 = input.int(1, options = [1,2,3], title="Độ rộng EMA Số 2",group = EMA)
+// Tính toán giá trị EMA
+emaValue2 = ta.ema(srccc, emaLength2)
+// Vẽ EMA trên biểu đồ nếu tùy chọn bật
+plot(showEMAso2 ? emaValue2 : na, title="EMA Số 2", color=color.red, linewidth=line2)
+
+// Thêm các input để cấu hình EMA
+showEMAso3 = input(false, title="Hiển thị EMA Số 3 3️⃣",group = EMA)
+emaLength3 = input.int(200, title="Chiều dài EMA số 3", minval=1,group = EMA)
+line3 = input.int(1, options = [1,2,3], title="Độ rộng EMA Số 3",group = EMA)
+// Tính toán giá trị EMA
+emaValue3 = ta.ema(srccc, emaLength3)
+// Vẽ EMA trên biểu đồ nếu tùy chọn bật
+plot(showEMAso3 ? emaValue3 : na, title="EMA Số 3", color=color.orange, linewidth=line3)
+
+//////////////////////// Thêm các input để cấu hình SMA
+showSMAso11 = input(false, title="Hiển thị SMA số 1️⃣ ",group = EMA)
+smaLength11 = input.int(50, title="Chiều dài SMA số 1", minval=1,group = EMA)
+line11 = input.int(1, options = [1,2,3], title="Độ rộng SMA Số 1",group = EMA)
+// Tính toán giá trị SMA
+smaValue11 = ta.sma(srccc, smaLength11)
+// Vẽ SMA trên biểu đồ nếu tùy chọn bật
+plot(showSMAso11 ? smaValue11 : na, title="SMA Số 1", color=color.red, linewidth=line11)
+
+//////////////////////// Thêm các input để cấu hình SMA
+showSMAso22 = input(false, title="Hiển thị SMA Số 2 2️⃣ ",group = EMA)
+smaLength22 = input.int(100, title="Chiều dài SMA số 2", minval=1,group = EMA)
+line22 = input.int(1, options = [1,2,3], title="Độ rộng SMA Số 22",group = EMA)
+// Tính toán giá trị SMA
+smaValue22 = ta.sma(srccc, smaLength22)
+// Vẽ SMA trên biểu đồ nếu tùy chọn bật
+plot(showSMAso22 ? smaValue22 : na, title="SMA Số 2", color=color.purple, linewidth=line22)
