@@ -1,0 +1,421 @@
+//@version=5
+indicator('IOSB + EMA + ALLigo', shorttitle='Tambp', overlay=true, max_lines_count=500,max_boxes_count =500,max_labels_count = 2)
+//-----Input-------
+periodo = input.int(3, 'Period')
+fator = input.float(1, 'Proportion to average: (1.25 = 125% of average)', minval=0)
+up = close > open
+down = open > close
+pesado = volume > (ta.ema(volume, periodo) * fator)
+barcolor(pesado and up ? color.rgb(67, 123, 255, 40) : pesado and down ? color.rgb(255, 70, 126, 28) : up ? color.rgb(255, 255, 255, 50) : color.rgb(92, 86, 86, 23))
+
+
+IOSB = "TLPInOutSideBarSetting"
+sib = input(false,group =IOSB, title="Show Inside Bars") 
+ZoneColor = input(defval = color.new(color.orange, 80),group =IOSB, title = "Background Color")
+BorderColor = input(defval = color.new(color.orange, 80),group =IOSB, title = "Border Color")
+
+var aCZ = array.new_float(0)
+
+float highest = high[1]
+float lowest = low[1]
+
+if (array.size(aCZ) > 0)
+    highest := array.get(aCZ, 0)
+    lowest := array.get(aCZ, 1)
+
+
+insideBarCondtion = low >= lowest and low <= highest and high >= lowest and high <= highest      
+
+if ( insideBarCondtion == true )
+    array.push(aCZ, high[1])
+    array.push(aCZ, low[1])
+
+if( array.size(aCZ) >= 2 and insideBarCondtion == false )
+    float maxCZ = array.max(aCZ)
+    float minCZ = array.min(aCZ)
+    box.new(bar_index - (array.size(aCZ) / 2) - 1, maxCZ, bar_index - 1, minCZ, bgcolor = ZoneColor, border_color = BorderColor)
+    array.clear(aCZ)
+//Inside Bars
+insideBar() => sib and high <= high[1] and low >= low[1] ? 1 : 0
+
+insideBar1 = input.color(color.yellow, '',inline = "insideBar1",title = "Inside Bar")
+//Inside and Outside Bars
+barcolor(insideBar() ? insideBar1 : na )
+
+EMA="EMA & SMA Setting"
+srccc = input(close, title="Source",group = EMA)
+// Thêm các input để cấu hình EMA
+showEMAso1 = input(true, title="Hiển thị EMA Số 1 2️⃣", group=EMA)
+maType1 = input.string(title='Chọn loại MA (EMA hoặc SMA)', options=['EMA', 'SMA'], defval='EMA', group=EMA)
+emaLength1 = input.int(20, title="Chiều dài EMA số 1", minval=1, group=EMA)
+line1 = input.int(1, options=[1,2,3], title="Độ rộng EMA Số 1", group=EMA)
+color1 = input.color(color.blue, title="Màu EMA số 1", group=EMA)
+// === TÍNH TOÁN ===
+maValue1 = maType1 == 'EMA' ? ta.ema(srccc, emaLength1) : ta.sma(srccc, emaLength1)
+// === VẼ RA BIỂU ĐỒ ===
+plot(showEMAso1 ? maValue1 : na, title="EMA/SMA Số 1", color=color1, linewidth=line1)
+
+// Thêm các input để cấu hình EMA
+showEMAso2 = input(true, title="Hiển thị EMA Số 2 2️⃣", group=EMA)
+maType2 = input.string(title='Chọn loại MA (EMA hoặc SMA)', options=['EMA', 'SMA'], defval='EMA', group=EMA)
+emaLength2 = input.int(200, title="Chiều dài EMA số 2", minval=1, group=EMA)
+line2 = input.int(1, options=[1,2,3], title="Độ rộng EMA Số 2", group=EMA)
+color2 = input.color(color.blue, title="Màu EMA số 2", group=EMA)
+// === TÍNH TOÁN ===
+maValue2 = maType2 == 'EMA' ? ta.ema(srccc, emaLength2) : ta.sma(srccc, emaLength2)
+// === VẼ RA BIỂU ĐỒ ===
+plot(showEMAso2 ? maValue2 : na, title="EMA/SMA Số 2", color=color2, linewidth=line2)
+
+// Thêm các input để cấu hình EMA
+showEMAso3 = input(true, title="Hiển thị EMA Số 3 ", group=EMA)
+maType3 = input.string(title='Chọn loại MA (EMA hoặc SMA)', options=['EMA', 'SMA'], defval='EMA', group=EMA)
+emaLength3 = input.int(200, title="Chiều dài EMA số 3", minval=1, group=EMA)
+line3 = input.int(1, options=[1,2,3], title="Độ rộng EMA Số 3", group=EMA)
+color3 = input.color(color.blue, title="Màu EMA số 3", group=EMA)
+// === TÍNH TOÁN ===
+maValue3 = maType3 == 'EMA' ? ta.ema(srccc, emaLength3) : ta.sma(srccc, emaLength3)
+// === VẼ RA BIỂU ĐỒ ===
+plot(showEMAso3 ? maValue3 : na, title="EMA/SMA Số 3", color=color3, linewidth=line3)
+
+LondonColor = input.color(color.new(color.green, 95),inline ='1',group = "Chỉ báo Sessions:")
+NYColor = input.color(color.new(color.red, 95),inline='2',group = "Chỉ báo Sessions:")
+AsiaColor =  input.color(color.new(color.blue,95),inline='3',group = "Chỉ báo Sessions:")
+///Sessions
+
+res = input.timeframe("D", group = "Chỉ báo Sessions:")
+london = input.session("1400-1801", "London Session", group = "Chỉ báo Sessions:")
+ny = input.session("1900-2301", "New York Session", group = "Chỉ báo Sessions:")
+asia = input.session("0700-1301", "Asia Session", group = "Chỉ báo Sessions:")
+
+//Bars
+
+is_newbar(sess) =>
+    t=time(res, sess, "GMT+7")
+    na(t[1]) and not na(t) or t[1] < t
+
+is_session(sess) =>
+    not na(time(timeframe.period, sess, "GMT+7"))
+    
+
+//London
+
+London = input.bool(true, "London Session",inline ='1', group = "Chỉ báo Sessions:")
+
+londonNewbar = is_newbar(london)
+londonSession = is_session(london)
+
+float londonLow = na
+londonLow := if londonSession
+    if londonNewbar
+        low
+    else
+        math.min(londonLow[1],low)
+else
+    londonLow
+
+float londonHigh = na
+londonHigh := if londonSession
+    if londonNewbar
+        high
+    else
+        math.max(londonHigh[1],high)
+else
+    londonHigh
+
+
+plotLL = plot(londonLow, color=color.new(#000000, 100))
+plotLH = plot(londonHigh, color=color.new(#000000, 100))
+fill(plotLL, plotLH, color = londonSession and London? LondonColor : na)
+//New York
+
+NY = input.bool(true, "New York Session",inline ='2', group = "Chỉ báo Sessions:")
+
+nyNewbar = is_newbar(ny)
+nySession = is_session(ny)
+
+float nyLow = na
+nyLow := if nySession
+    if nyNewbar
+        low
+    else
+        math.min(nyLow[1],low)
+else
+    nyLow
+
+float nyHigh = na
+nyHigh := if nySession
+    if nyNewbar
+        high
+    else
+        math.max(nyHigh[1],high)
+else
+    nyHigh
+
+
+plotNYL = plot(nyLow, color=color.new(#000000, 100))
+plotNYH = plot(nyHigh, color=color.new(#000000, 100))
+fill(plotNYL, plotNYH, color = nySession and NY ? NYColor : na)
+
+
+
+//Tokyo
+
+Tokyo = input.bool(true, "Tokyo Session",inline ='3', group = "Chỉ báo Sessions:")
+
+tokyoNewbar = is_newbar(asia)
+tokyoSession = is_session(asia)
+
+float tokyoLow = na
+tokyoLow := if tokyoSession
+    if tokyoNewbar
+        low
+    else
+        math.min(tokyoLow[1],low)
+else
+    tokyoLow
+
+float tokyoHigh = na
+tokyoHigh := if tokyoSession
+    if tokyoNewbar
+        high
+    else
+        math.max(tokyoHigh[1],high)
+else
+    tokyoHigh
+
+
+plotTL = plot(tokyoLow, color=color.new(#000000, 100))
+plotTH = plot(tokyoHigh, color=color.new(#000000, 100))
+fill(plotTL, plotTH, color = tokyoSession and Tokyo? AsiaColor : na)
+
+/// Bollinger band
+groupBB = "BOLLINGER BAND"
+// Inputs
+length0   = input.int(20, minval=1, group=groupBB)
+maType0   = input.string("SMA", "Basis MA Type", options = ["SMA", "EMA", "SMMA (RMA)", "WMA", "VWMA"], group=groupBB)
+src0      = input.source(close, title="Source", group=groupBB)
+mult0     = input.float(2.0, minval=0.001, maxval=50, title="StdDev", group=groupBB)
+OpenBolling = input.bool(false, title="Bật Bollinger Band", group=groupBB)   // Nút bật/tắt
+Mausac      = input.color(color.rgb(33,150,243,95), "Màu nền", group=groupBB)
+// MA function
+ma(source, length, _type) =>
+    _ma = switch _type
+        "SMA" => ta.sma(source, length)
+        "EMA" => ta.ema(source, length)
+        "SMMA (RMA)" => ta.rma(source, length)
+        "WMA" => ta.wma(source, length)
+        "VWMA" => ta.vwma(source, length)
+    _ma
+
+// Bollinger Bands calculations
+basis0 = ma(src0, length0, maType0)
+dev0   = mult0 * ta.stdev(src0, length0)
+upper0 = basis0 + dev0
+lower0 = basis0 - dev0
+
+// Offset
+offset0 = input.int(0, "Offset", minval = -500, maxval = 500, group=groupBB)
+
+// Plots (chỉ plot khi bật)
+p_basis = plot(OpenBolling ? basis0 : na, "Basis", color=#2962FF, offset=offset0)
+p_up    = plot(OpenBolling ? upper0 : na, "Upper", color=#F23645, offset=offset0)
+p_low   = plot(OpenBolling ? lower0 : na, "Lower", color=#089981, offset=offset0)
+// Fill (chỉ fill khi bật)
+fill(p_up, p_low, title="Background", color= OpenBolling ? Mausac : na)
+//--------------------------------------------------------
+
+
+daysBack = input.int(5, "Số ngày hiện", minval=1, group="General")
+Extend = input.int(1, "Độ dài extend bên phải", minval=1, group="General")
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// SESSION 1
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+show1      = input.bool(true, "Bật/Tắt", group="Session 1")
+sess1      = input.session("0630-0701", "Session 1",inline="ss1", group="Session 1")
+utc1       = input.string("UTC+7", "",inline="ss1", group="Session 1")
+up1        = input.color(color.red, "High",inline="range1", group="Session 1")
+dn1        = input.color(color.lime, "Low",inline="range1",  group="Session 1")
+bg1        = input.color(color.blue, "Box",inline="range1",  group="Session 1")
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// SESSION 2
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+show2      = input.bool(true, "Bật/Tắt", group="Session 2")
+sess2      = input.session("1430-1501", "Session 2",inline="ss2", group="Session 2")
+utc2       = input.string("UTC+7", "",inline="ss2", group="Session 2")
+up2        = input.color(color.orange, "High",inline="range2", group="Session 2")
+dn2        = input.color(color.aqua, "Low",inline="range2", group="Session 2")
+bg2        = input.color(color.purple, "Box",inline="range2", group="Session 2")
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// SESSION 3
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+show3      = input.bool(true, "Enable", group="Session 3")
+sess3      = input.session("2230-2301", "Session 3",inline="ss2", group="Session 3")
+utc3       = input.string("UTC+7", "",inline="ss2", group="Session 3")
+up3        = input.color(color.yellow, "High",inline="range2", group="Session 3")
+dn3        = input.color(color.fuchsia, "Low",inline="range2", group="Session 3")
+bg3        = input.color(color.gray, "Box",inline="range2", group="Session 3")
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// LIMIT DAYS
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+showRange = time >= timenow - ((daysBack+1.22) * 24 * 60 * 60 * 1000)
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// SESSION STATES
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+s1 = not na(time(timeframe.period, sess1, utc1))
+s2 = not na(time(timeframe.period, sess2, utc2))
+s3 = not na(time(timeframe.period, sess3, utc3))
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// VARIABLES
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+var float hi1 = na
+var float lo1 = na
+var box box1 = na
+
+var float hi2 = na
+var float lo2 = na
+var box box2 = na
+
+var float hi3 = na
+var float lo3 = na
+var box box3 = na
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// SESSION 1 LOGIC
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+if show1
+    if s1 and not s1[1]
+        hi1 := high
+        lo1 := low
+        
+        if showRange
+            box1 := box.new(
+                 left=bar_index,
+                 top=hi1,
+                 right=bar_index + 1,
+                 bottom=lo1,
+                 bgcolor=color.new(bg1, 85),
+                 border_color=bg1)
+
+    if s1
+        hi1 := math.max(hi1, high)
+        lo1 := math.min(lo1, low)
+
+        if showRange and not na(box1)
+            box.set_right(box1, bar_index + Extend)
+            box.set_top(box1, hi1)
+            box.set_bottom(box1, lo1)
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// SESSION 2 LOGIC
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+if show2
+    if s2 and not s2[1]
+        hi2 := high
+        lo2 := low
+        
+        if showRange
+            box2 := box.new(
+                 left=bar_index,
+                 top=hi2,
+                 right=bar_index + 1,
+                 bottom=lo2,
+                 bgcolor=color.new(bg2, 85),
+                 border_color=bg2)
+
+    if s2
+        hi2 := math.max(hi2, high)
+        lo2 := math.min(lo2, low)
+
+        if showRange and not na(box2)
+            box.set_right(box2, bar_index + Extend)
+            box.set_top(box2, hi2)
+            box.set_bottom(box2, lo2)
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// SESSION 3 LOGIC
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+if show3
+    if s3 and not s3[1]
+        hi3 := high
+        lo3 := low
+        
+        if showRange
+            box3 := box.new(
+                 left=bar_index,
+                 top=hi3,
+                 right=bar_index + 1,
+                 bottom=lo3,
+                 bgcolor=color.new(bg3, 85),
+                 border_color=bg3)
+
+    if s3
+        hi3 := math.max(hi3, high)
+        lo3 := math.min(lo3, low)
+
+        if showRange and not na(box3)
+            box.set_right(box3, bar_index + Extend)
+            box.set_top(box3, hi3)
+            box.set_bottom(box3, lo3)
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// PLOTS
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+plot(show1 and showRange ? hi1 : na, "S1 High", color = not s1 ? up1 : na, offset=1)
+plot(show1 and showRange ? lo1 : na, "S1 Low",  color = not s1 ? dn1 : na, offset=1)
+
+plot(show2 and showRange ? hi2 : na, "S2 High", color = not s2 ? up2 : na, offset=1)
+plot(show2 and showRange ? lo2 : na, "S2 Low",  color = not s2 ? dn2 : na, offset=1)
+
+plot(show3 and showRange ? hi3 : na, "S3 High", color = not s3 ? up3 : na, offset=1)
+plot(show3 and showRange ? lo3 : na, "S3 Low",  color = not s3 ? dn3 : na, offset=1)
+// ~~ Alerts {
+//alertcondition(sess and not sess[1],"Session Start","Session has started!")
+//alertcondition(sess[1] and not sess,"Session End","Session has ended!")
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~}
+// Version 1.1
+// ==========================
+// Inputs
+// ==========================
+
+jawshow = input(true, title="Hiển thị đường Jaw")
+jawLength   = input.int(13, minval=5, maxval=100, title="Jaw Length")
+lineall = input.int(1, options = [1,2,3], title="Độ rộng jawLength")
+Jaw1 = input.color(color.green)
+Jaw2 = input.color(color.red)
+
+teethLengthshow = input(true, title="Hiển thị đường teethLength")
+teethLength = input.int(8, minval=5, maxval=100, title="Teeth Length")
+lineall2 = input.int(1, options = [1,2,3], title="Độ rộng teethLength")
+teethLength1 = input.color(color.green)
+teethLength2 = input.color(color.red)
+
+
+lipsLengthshow = input(true, title="Hiển thị đường lipsLength")
+lipsLength  = input.int(5, minval=5, maxval=100, title="Lips Length")
+lineall3 = input.int(1, options = [1,2,3], title="Độ rộng lipsLength")
+lipsLength1 = input.color(color.green)
+lipsLength2 = input.color(color.red)
+
+// ==========================
+// Alligator lines
+// ==========================
+medianPrice = hl2
+
+jaw   = ta.ema(medianPrice, jawLength)
+teeth = ta.ema(medianPrice, teethLength)
+lips  = ta.ema(medianPrice, lipsLength)
+
+// ==========================
+// Slopes
+// ==========================
+jawSlope   = jaw - jaw[1]
+teethSlope = teeth - teeth[1]
+lipsSlope  = lips - lips[1]
+
+// Line colors
+jawColor   = jawSlope > 0 ? Jaw1 : Jaw2
+teethColor = teethSlope > 0 ? teethLength1 : teethLength2
+lipsColor  = lipsSlope > 0 ? lipsLength1 : lipsLength2
+
+plot(jawshow ? jaw : na, color=jawColor, title="Jaw",linewidth =lineall)
+plot(teethLengthshow ? teeth : na, color=teethColor, title="Teeth",linewidth =lineall2)
+plot(lipsLengthshow ? lips : na, color=lipsColor, title="Lips",linewidth =lineall3)
+
